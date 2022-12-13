@@ -60,6 +60,10 @@ func (t ByteTag) Write(w io.Writer) {
 func (t ByteTag) Get() int8     { return t.val }
 func (t *ByteTag) Set(val int8) { t.val = val }
 
+func CreateByteTag(val int8) *ByteTag {
+	return &ByteTag{val: val}
+}
+
 // TAG_Short
 type ShortTag struct{ val int16 }
 
@@ -78,6 +82,10 @@ func (t ShortTag) Write(w io.Writer) {
 
 func (t ShortTag) Get() int16     { return t.val }
 func (t *ShortTag) Set(val int16) { t.val = val }
+
+func CreateShortTag(val int16) *ShortTag {
+	return &ShortTag{val: val}
+}
 
 // TAG_Int
 type IntTag struct{ val int32 }
@@ -98,6 +106,10 @@ func (t IntTag) Write(w io.Writer) {
 func (t IntTag) Get() int32     { return t.val }
 func (t *IntTag) Set(val int32) { t.val = val }
 
+func CreateIntTag(val int32) *IntTag {
+	return &IntTag{val: val}
+}
+
 // TAG_Long
 type LongTag struct{ val int64 }
 
@@ -116,6 +128,10 @@ func (t LongTag) Write(w io.Writer) {
 
 func (t LongTag) Get() int64     { return t.val }
 func (t *LongTag) Set(val int64) { t.val = val }
+
+func CreateLongTag(val int64) *LongTag {
+	return &LongTag{val: val}
+}
 
 // TAG_Float
 type FloatTag struct{ val float32 }
@@ -136,6 +152,10 @@ func (t FloatTag) Write(w io.Writer) {
 func (t FloatTag) Get() float32     { return t.val }
 func (t *FloatTag) Set(val float32) { t.val = val }
 
+func CreateFloatTag(val float32) *FloatTag {
+	return &FloatTag{val: val}
+}
+
 // TAG_Double
 type DoubleTag struct{ val float64 }
 
@@ -154,6 +174,10 @@ func (t DoubleTag) Write(w io.Writer) {
 
 func (t DoubleTag) Get() float64     { return t.val }
 func (t *DoubleTag) Set(val float64) { t.val = val }
+
+func CreateDoubleTag(val float64) *DoubleTag {
+	return &DoubleTag{val: val}
+}
 
 // TAG_String
 type StringTag struct{ val string }
@@ -183,10 +207,8 @@ func (t StringTag) Write(w io.Writer) {
 func (t StringTag) Get() string     { return t.val }
 func (t *StringTag) Set(val string) { t.val = val }
 
-func CreateStringTag(s string) *StringTag {
-	return &StringTag{
-		val: s,
-	}
+func CreateStringTag(val string) *StringTag {
+	return &StringTag{val: val}
 }
 
 // TAG_Byte_Array
@@ -219,6 +241,10 @@ func (t *ByteArrayTag) Get(i int) byte      { return t.val[i] }
 func (t *ByteArrayTag) Set(i int, val byte) { t.val[i] = val }
 func (t *ByteArrayTag) Append(val byte)     { t.val = append(t.val, val) }
 func (t *ByteArrayTag) Remove(i int)        { t.val = append(t.val[:i], t.val[i+1:]...) }
+
+func CreateByteArrayTag(val []byte) *ByteArrayTag {
+	return &ByteArrayTag{val: val}
+}
 
 // TAG_Int_Array
 type IntArrayTag struct{ val []int32 }
@@ -256,6 +282,10 @@ func (t *IntArrayTag) Set(i int, val int32) { t.val[i] = val }
 func (t *IntArrayTag) Append(val int32)     { t.val = append(t.val, val) }
 func (t *IntArrayTag) Remove(i int)         { t.val = append(t.val[:i], t.val[i+1:]...) }
 
+func CreateIntArraytag(val []int32) *IntArrayTag {
+	return &IntArrayTag{val: val}
+}
+
 // TAG_Long_Array
 type LongArrayTag struct{ val []int64 }
 
@@ -291,6 +321,10 @@ func (t *LongArrayTag) Get(i int) int64      { return t.val[i] }
 func (t *LongArrayTag) Set(i int, val int64) { t.val[i] = val }
 func (t *LongArrayTag) Append(val int64)     { t.val = append(t.val, val) }
 func (t *LongArrayTag) Remove(i int)         { t.val = append(t.val[:i], t.val[i+1:]...) }
+
+func CreateLongArrayTag(val []int64) *LongArrayTag {
+	return &LongArrayTag{val: val}
+}
 
 // TAG_List
 type ListTag struct {
@@ -369,36 +403,17 @@ func (t *ListTag) Set(i int, tag Tag) { t.tags[i] = tag }
 func (t *ListTag) Append(tag Tag)     { t.tags = append(t.tags, tag) }
 func (t *ListTag) Remove(i int)       { t.tags = append(t.tags[:i], t.tags[i+1:]...) }
 
-func CreateListTag(id TagID) *ListTag {
-	t := ListTag{
-		id: id,
+func CreateListTag(id TagID, tags []Tag) *ListTag {
+	return &ListTag{
+		tags: tags,
+		id:   id,
 	}
-
-	return &t
 }
 
 // TAG_Compound
 type CompoundTag struct {
 	tags     map[string]Tag
 	implicit bool
-}
-
-func CreateCompoundTag() *CompoundTag {
-	t := CompoundTag{
-		tags:     make(map[string]Tag),
-		implicit: false,
-	}
-
-	return &t
-}
-
-func CreateImplicitCompoundTag() *CompoundTag {
-	t := CompoundTag{
-		tags:     make(map[string]Tag),
-		implicit: true,
-	}
-
-	return &t
 }
 
 func (CompoundTag) ID() TagID { return CompoundTagID }
@@ -410,7 +425,7 @@ func (t *CompoundTag) Read(r io.Reader) {
 		return tag.Get()
 	}
 
-	for true {
+	for {
 		b := make([]byte, 1)
 		r.Read(b)
 		id := TagID(b[0])
@@ -491,6 +506,20 @@ func (t *CompoundTag) Contains(key string) bool {
 	}
 
 	return false
+}
+
+func CreateCompoundTag() *CompoundTag {
+	return &CompoundTag{
+		tags:     make(map[string]Tag),
+		implicit: false,
+	}
+}
+
+func CreateImplicitCompoundTag() *CompoundTag {
+	return &CompoundTag{
+		tags:     make(map[string]Tag),
+		implicit: true,
+	}
 }
 
 func (t *CompoundTag) GetByte(key string) (i int8, ok bool) {
