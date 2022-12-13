@@ -1,8 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"log"
+	"os"
 	"strconv"
 	"strings"
 
@@ -25,64 +26,80 @@ var names = [...]string{
 	"Long_Array",
 }
 
+var file string
+
 func main() {
-	printTag(nbt.ReadFile("./bigtest.nbt"), "root", 0)
+	flags := flag.NewFlagSet("flags", flag.ExitOnError)
+
+	file = os.Args[1]
+
+	path := ""
+	flags.StringVar(&path, "path", path, "NBT Path to work on")
+	flags.StringVar(&path, "p", path, "Alias of -path")
+
+	raw := false
+	flags.BoolVar(&raw, "raw", raw, "Whether or not to print tag type, key, etc.")
+	flags.BoolVar(&raw, "r", raw, "Alias of -raw")
+
+	val := ""
+	flags.StringVar(&val, "set", val, "Whether or not to print tag type, key, etc.")
+	flags.StringVar(&val, "s", val, "Alias of -set")
+
+	flags.Parse(os.Args[2:])
+
+	set := false
+	flags.Visit(func(f *flag.Flag) {
+		if f.Name == "set" || f.Name == "s" {
+			set = true
+		}
+	})
+
+	nbt := nbt.ReadFile(file)
+
+	if set {
+		parsePath(nbt, path)
+		// set tag value here
+	} else {
+		printTag(parsePath(nbt, path), path, 0, raw)
+	}
 }
 
 func parsePath(parent *nbt.CompoundTag, path string) nbt.Tag {
+	if path == "" {
+		return parent
+	}
+
 	splitPath := strings.Split(path, ".")
 
 	segments := strings.Split(splitPath[0], "[")
 	tag := parent.Get(segments[0])
 
-	switch tag.ID() {
-	case nbt.ByteArrayTagID:
-		fallthrough
-	case nbt.IntArrayTagID:
-		fallthrough
-	case nbt.LongArrayTagID:
-		fallthrough
-	case nbt.ListTagID:
-		if len(segments) == 1 {
-			return tag
-		} else {
-			return parseIndex(tag, segments[1:])
-		}
-	case nbt.CompoundTagID:
-		compound := tag.(*nbt.CompoundTag)
+	if tag.ID() == nbt.CompoundTagID {
+		if len(splitPath) > 1 {
+			compound := tag.(*nbt.CompoundTag)
 
-		return parsePath(compound, strings.Join(splitPath[1:], "."))
+			return parsePath(compound, strings.Join(splitPath[1:], "."))
+		}
 	}
 
 	return tag
 }
 
-func parseIndex(arr nbt.Tag, segments []string) nbt.Tag {
+/*func parseIndex(segments []string) int {
 	s := strings.Trim(segments[0], "]")
-	index, err := strconv.ParseInt(s, 10, 64)
+	index, err := strconv.ParseInt(s, 10, 32)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("Error: \"%s\" is not an integer!"))
 	}
 
-	switch arr.ID() {
-	case nbt.ByteArrayTagID:
-		tag := arr.(*nbt.ByteArrayTag)
+	return int(index)
+}*/
 
-		if len(segments) == 1 {
-			return tag.Get(int(index))
-		} else {
-
-		}
-	case nbt.IntArrayTagID:
-		tag := arr.(*nbt.IntArrayTag)
-	case nbt.LongArrayTagID:
-		tag := arr.(*nbt.LongArrayTag)
-	case nbt.ListTagID:
-		tag := arr.(*nbt.ListTag)
+func printTag(t nbt.Tag, key string, indentLevel int, raw bool) {
+	if key == "" {
+		key = file
 	}
-}
 
-func printTag(t nbt.Tag, key string, indentLevel int) {
 	id := t.ID()
 	var data string
 
@@ -170,7 +187,11 @@ func printTag(t nbt.Tag, key string, indentLevel int) {
 
 	indent := strings.Repeat("\t", indentLevel)
 
-	fmt.Printf("%sTAG_%s('%s'): %s\n", indent, names[id], key, data)
+	if !raw {
+		fmt.Printf("%sTAG_%s('%s'): %s\n", indent, names[id], key, data)
+	} else {
+		fmt.Print(data)
+	}
 
 	if id == nbt.CompoundTagID {
 		tag := t.(*nbt.CompoundTag)
@@ -180,7 +201,7 @@ func printTag(t nbt.Tag, key string, indentLevel int) {
 		for key := range tag.GetAll() {
 			child := tag.GetAll()[key]
 
-			printTag(child, key, indentLevel+1)
+			printTag(child, key, indentLevel+1, raw)
 		}
 
 		fmt.Printf("%s}\n", indent)
@@ -193,7 +214,7 @@ func printTag(t nbt.Tag, key string, indentLevel int) {
 		for i := range tag.GetAll() {
 			child := tag.GetAll()[i]
 
-			printTag(child, "N/A", indentLevel+1)
+			printTag(child, "N/A", indentLevel+1, raw)
 		}
 
 		fmt.Printf("%s]\n", indent)
